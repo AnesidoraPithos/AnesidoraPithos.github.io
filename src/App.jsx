@@ -37,13 +37,16 @@ function buildBrainMaterial() {
   return new THREE.MeshPhysicalMaterial({
     color: new THREE.Color('#C07068'),    // warm cortex flesh
     emissive: new THREE.Color('#4A0A05'), // deep blood-red ember
-    emissiveIntensity: 0.55,
-    roughness: 0.72,
+    emissiveIntensity: 0.5,
+    roughness: 0.1,         // Makes the surface very smooth/glossy
     metalness: 0.0,
-    transmission: 0.08,                  // slight wet translucency
-    thickness: 4.0,
+    transmission: 0.5,      // Allows light to pass through the tissue
+    thickness: 5.0,         // Simulates the depth of the "flesh"
+    ior: 1.45,              // Index of refraction for organic matter
+    clearcoat: 1.0,         // Adds a "wet" outer layer
+    clearcoatRoughness: 0.1,
     transparent: true,
-    opacity: 0.94,
+    opacity: 0.95,
   });
 }
 
@@ -63,18 +66,23 @@ function buildCellMesh(node) {
   const palette = COLORS[node.group] ?? COLORS[0];
 
   // Lumpy inner cell body: displace each vertex outward by a random amount
-  const geo = new THREE.IcosahedronGeometry(radius, 3);
+  const geo = new THREE.IcosahedronGeometry(radius, 4); 
   const posAttr = geo.attributes.position;
+
   for (let i = 0; i < posAttr.count; i++) {
     const x = posAttr.getX(i);
     const y = posAttr.getY(i);
     const z = posAttr.getZ(i);
-    const len = Math.sqrt(x * x + y * y + z * z) || 1;
-    const scale = 0.70 + rng() * 0.60;
-    posAttr.setXYZ(i, (x / len) * radius * scale, (y / len) * radius * scale, (z / len) * radius * scale);
-  }
-  posAttr.needsUpdate = true;
-  geo.computeVertexNormals();
+  
+    // Use a smooth sine-based "lump" instead of random spikes
+    const noise = Math.sin(x * 0.5) * Math.cos(y * 0.5) * Math.sin(z * 0.5);
+    const scale = 0.85 + noise * 0.25; 
+  
+    posAttr.setXYZ(i, x * scale, y * scale, z * scale);
+}
+
+posAttr.needsUpdate = true;
+geo.computeVertexNormals();
 
   const mat = new THREE.MeshPhongMaterial({
     color: new THREE.Color(palette.base),
@@ -264,9 +272,12 @@ export default function App() {
     scene.add(bioLight);
 
     // Rim light — above and slightly behind, catches wet lumpy node edges
-    const rimLight = new THREE.DirectionalLight(0x2244aa, 1.8);
-    rimLight.position.set(50, 200, -300);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    rimLight.position.set(100, 200, -200); // Positioned above and behind
     scene.add(rimLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x4433aa, 0xaa3333, 0.6); // Soft top/bottom fill
+    scene.add(hemiLight);
 
     graphRef.current.cameraPosition({ x: 0, y: 0, z: 430 }, { x: 0, y: 0, z: 0 }, 0);
 
@@ -415,20 +426,19 @@ export default function App() {
           const src = typeof link.source === 'object' ? link.source?.id : link.source;
           return src === 'mind' ? 0.005 : 0.003;
         }}
-        linkDirectionalParticleWidth={1.8}
+        linkDirectionalParticleWidth={0.8} // Reduce width for a finer, data-like flow
         linkDirectionalParticleThreeObject={(link) => {
-          const sg = typeof link.source === 'object' ? link.source?.group : 0;
-          const col = sg === 1 ? '#C06050' : sg === 2 ? '#3A9ABB' : '#E8C07A';
-          const geo = new THREE.SphereGeometry(1.2, 6, 6);
+          // Use a very small sphere with high emissive intensity
+          const geo = new THREE.SphereGeometry(0.5, 8, 8); 
           const mat = new THREE.MeshPhongMaterial({
-            color: new THREE.Color(col),
-            emissive: new THREE.Color(col),
-            emissiveIntensity: 2.2,
+            color: new THREE.Color('#E8B86D'),
+            emissive: new THREE.Color('#E8B86D'),
+            emissiveIntensity: 3.0, // Makes them "glow" without being bulky
             transparent: true,
-            opacity: 0.85,
+            opacity: 0.8
           });
           return new THREE.Mesh(geo, mat);
-        }}
+    }}
       />
 
       <div className="title-overlay">
