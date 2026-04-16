@@ -248,36 +248,54 @@ export default function App() {
     if (!graphRef.current) return;
     const scene = graphRef.current.scene();
 
-    // 1. Only remove lights that DO NOT have our custom name
+    // 1. Surgical light removal (prevents blackout)
     const toRemove = [];
     scene.traverse((obj) => { 
-      if (obj.isLight && obj.name !== 'custom-light') {
-        toRemove.push(obj); 
-      }
+      if (obj.isLight && obj.name !== 'custom-light') toRemove.push(obj); 
     });
     toRemove.forEach((l) => scene.remove(l));
 
-    // 2. Check if our lights already exist before adding them again
     if (scene.getObjectByName('custom-light')) return;
 
-    // 3. Add custom lights with high intensities and the 'custom-light' name
-    const ambient = new THREE.AmbientLight(0x1a1a2e, 1.5); // Boosted baseline
+    // 2. Add High-Intensity Lights for MeshPhysicalMaterial
+    const ambient = new THREE.AmbientLight(0x1a1a2e, 2.0);
     ambient.name = 'custom-light';
     scene.add(ambient);
 
-    const coreLight = new THREE.PointLight(0xe8b86d, 12.0, 600); // Massive boost for MeshPhysicalMaterial
-    coreLight.position.set(0, 0, 0);
-    coreLight.name = 'custom-light';
-    scene.add(coreLight);
+    const rim = new THREE.DirectionalLight(0xffffff, 5.0);
+    rim.position.set(50, 200, -300);
+    rim.name = 'custom-light';
+    scene.add(rim);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 4.0); // Strong rim light to define shape
-    rimLight.position.set(50, 200, -300);
-    rimLight.name = 'custom-light';
-    scene.add(rimLight);
+    // 3. Load Model with Fixed Scaling and Centering
+    if (brainMeshRef.current || scene.getObjectByName('brain-root')) return;
 
-    // ... (Add your other lights like bioLight/aiLight here, naming each 'custom-light')
+    const loader = new GLTFLoader();
+    // Use a relative path 'brain.glb' instead of '/brain.glb'
+    loader.load('brain.glb', (gltf) => {
+      const brain = gltf.scene;
+      brain.name = 'brain-root';
 
-    console.log("Lighting system initialized and locked.");
+      // FORCE geometry to center and compute normals so it's light-reactive
+      brain.traverse((child) => {
+        if (child.isMesh) {
+          child.geometry.center(); // <--- This finds the brain if it's off-center
+          child.geometry.computeVertexNormals();
+          child.material = buildBrainMaterial();
+        }
+      });
+
+      // Manual scale override (ignores the 'e' error in your logs)
+      brain.scale.setScalar(45); // Adjust this number if it's too big/small
+      
+      brainMeshRef.current = brain;
+      scene.add(brain);
+
+      // Track the central node for positioning
+      mindNodeRef.current = graphData.nodes.find(n => 
+        n.id === 'mind' || n.id === 'Core' || n.id === 'My Mind'
+      ) ?? null;
+    });
   }, []);
 
   // Click a node → fly camera into it and open side panel
