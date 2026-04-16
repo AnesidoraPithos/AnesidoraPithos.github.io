@@ -146,6 +146,7 @@ function makeLinkMaterial(link) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const graphRef = useRef(null);
+  const lightsInitialized = useRef(false);
   const targetZ = useRef(430);
   const currentZ = useRef(430);
   const nodeFocused = useRef(false); // pauses scroll loop while zoomed into a node
@@ -245,7 +246,7 @@ export default function App() {
 
   // Inject custom scene lights after graph engine settles (idempotent)
   const onEngineStop = useCallback(() => {
-    if (!graphRef.current) return;
+    if (!graphRef.current || lightsInitialized.current) return;
     const scene = graphRef.current.scene();
 
     // Strip Vite default lights
@@ -359,6 +360,7 @@ export default function App() {
         console.error('[Brain] Failed to load brain.glb:', err);
       }
     );
+    lightsInitialized.current = true;
   }, []);
 
   // Click a node → fly camera into it and open side panel
