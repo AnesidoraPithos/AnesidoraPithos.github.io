@@ -1,0 +1,231 @@
+/* ─── Reset & full-screen void ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050408;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── Graph container ───────────────────────────────────────────────────────── */
+.container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background: #050408;
+  cursor: none;
+}
+
+/* ─── Atmospheric radial vignette ───────────────────────────────────────────── */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background:
+    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, #050408 100%),
+    radial-gradient(ellipse 120% 50% at 50% 0%,   #050408 0%,  transparent 60%),
+    radial-gradient(ellipse 120% 50% at 50% 100%, #050408 0%,  transparent 60%);
+}
+
+/* ─── Title overlay ─────────────────────────────────────────────────────────── */
+.title-overlay {
+  position: fixed;
+  top: 2.8rem;
+  left: 3.2rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  pointer-events: none;
+  animation: titleFadeIn 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes titleFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.title-main {
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  color: #E8B86D;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow:
+    0 0 40px rgba(232, 184, 109, 0.35),
+    0 0 80px rgba(232, 184, 109, 0.15);
+}
+
+.title-sub {
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-size: clamp(0.65rem, 1vw, 0.8rem);
+  color: rgba(232, 184, 109, 0.38);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+/* ─── Scroll hint ───────────────────────────────────────────────────────────── */
+.scroll-hint {
+  position: fixed;
+  bottom: 2.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-size: 0.72rem;
+  color: rgba(232, 184, 109, 0.4);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: scrollHintPulse 3s ease-in-out 1.5s infinite, scrollHintFade 6s ease 8s forwards;
+}
+
+@keyframes scrollHintPulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.75; }
+}
+
+@keyframes scrollHintFade {
+  from { opacity: 0.4; }
+  to   { opacity: 0; }
+}
+
+/* ─── Custom cursor ─────────────────────────────────────────────────────────── */
+.container::after {
+  content: '';
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(232, 184, 109, 0.6);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px rgba(232, 184, 109, 0.4);
+  transition: opacity 0.3s;
+}
+
+/* ─── Node info side panel ──────────────────────────────────────────────────── */
+.node-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(440px, 92vw);
+  height: 100vh;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.6rem;
+  padding: 3.2rem 2.8rem 3.2rem 2.4rem;
+  background: rgba(5, 4, 8, 0.94);
+  border-left: 1px solid rgba(232, 184, 109, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transform: translateX(105%);
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  cursor: auto;
+}
+
+.node-panel--visible {
+  transform: translateX(0);
+}
+
+/* Colour-coded group badge */
+.node-panel__badge {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.node-panel__badge[data-group="0"] { background: #E8B86D; box-shadow: 0 0 12px rgba(232, 184, 109, 0.5); }
+.node-panel__badge[data-group="1"] { background: #B04040; box-shadow: 0 0 12px rgba(176, 64, 64, 0.5); }
+.node-panel__badge[data-group="2"] { background: #2E7BA8; box-shadow: 0 0 12px rgba(46, 123, 168, 0.5); }
+
+.node-panel__title {
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: #F0D090;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-shadow: 0 0 30px rgba(232, 184, 109, 0.2);
+}
+
+.node-panel__desc {
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-size: clamp(0.95rem, 1.4vw, 1.08rem);
+  color: rgba(240, 220, 170, 0.78);
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+}
+
+.node-panel__link {
+  display: inline-block;
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(232, 184, 109, 0.65);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(232, 184, 109, 0.2);
+  padding-bottom: 0.15em;
+  transition: color 0.25s, border-color 0.25s;
+  cursor: pointer;
+}
+
+.node-panel__link:hover {
+  color: #E8B86D;
+  border-color: rgba(232, 184, 109, 0.55);
+  text-shadow: 0 0 20px rgba(232, 184, 109, 0.3);
+}
+
+/* ─── Back to macro view button ─────────────────────────────────────────────── */
+.back-btn {
+  position: fixed;
+  bottom: 2.4rem;
+  right: 2.2rem;
+  z-index: 40;
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-weight: 300;
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(232, 184, 109, 0.6);
+  background: rgba(5, 4, 8, 0.75);
+  border: 1px solid rgba(232, 184, 109, 0.2);
+  border-radius: 2px;
+  padding: 0.6em 1.1em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color 0.25s, border-color 0.25s, box-shadow 0.25s;
+  animation: titleFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.back-btn:hover {
+  color: #E8B86D;
+  border-color: rgba(232, 184, 109, 0.45);
+  box-shadow: 0 0 18px rgba(232, 184, 109, 0.12);
+}
