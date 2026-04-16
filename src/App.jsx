@@ -248,7 +248,7 @@ export default function App() {
     if (!graphRef.current) return;
     const scene = graphRef.current.scene();
 
-    // 1. Surgical light removal (prevents blackout)
+    // 1. Clean up old lights but keep our new ones
     const toRemove = [];
     scene.traverse((obj) => { 
       if (obj.isLight && obj.name !== 'custom-light') toRemove.push(obj); 
@@ -257,34 +257,26 @@ export default function App() {
 
     if (scene.getObjectByName('custom-light')) return;
 
-    // 2. Add High-Intensity Lights for MeshPhysicalMaterial
-    // A. The Main 'Key' Light (Positioned to hit the front-left from the camera's view)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
-    keyLight.position.set(-150, 150, 400); // Positive Z brings it 'in front' of the brain
+    // 2. KEY LIGHT: Front-left illumination
+    const keyLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    keyLight.position.set(-150, 150, 400);
     keyLight.name = 'custom-light';
     scene.add(keyLight);
 
-    // B. The 'Fill' Light (Soft blue to lift the shadows on the right side)
-    const fillLight = new THREE.PointLight(0x2244aa, 3.0, 500);
-    fillLight.position.set(200, -100, 100);
+    // 3. FILL LIGHT: Soft blue for the right side
+    const fillLight = new THREE.PointLight(0x2244aa, 3.5, 600);
+    fillLight.position.set(200, -100, 200);
     fillLight.name = 'custom-light';
     scene.add(fillLight);
 
-    // C. Boost the Ambient Baseline
-    // Increase this if the shadows are still pitch black
-    const ambient = new THREE.AmbientLight(0x1a1a2e, 2.5); 
-    ambient.name = 'custom-light';
-    scene.add(ambient);
-
-    // D. The 'Back' Light (Illuminates the rear of the brain)
-    // This is the missing piece. It sits behind the model.
-    const backLight = new THREE.DirectionalLight(0xffffff, 3.5);
-    backLight.position.set(0, 100, -500); // Negative Z pushes it behind
+    // 4. BACK LIGHT: Illuminates the rear silhouette
+    const backLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    backLight.position.set(0, 100, -500);
     backLight.name = 'custom-light';
     scene.add(backLight);
 
-    const coreLight = new THREE.PointLight(0xe8b86d, 20, 500); // High intensity
-    coreLight.position.set(0, 0, 0); // Sits exactly in the center of the brain
+    // 5. INTERNAL GLOW: Core amber light
+    const coreLight = new THREE.PointLight(0xe8b86d, 15.0, 450);
     coreLight.name = 'custom-light';
     scene.add(coreLight);
 
@@ -365,54 +357,64 @@ export default function App() {
         nodeLabel={(node) => node.name}
         nodeColor={(node) => COLORS[node.group]?.base ?? '#ffffff'}
         linkThreeMaterial={makeLinkMaterial}
-        linkWidth={(link) => link.width ?? 2}
+        linkWidth={0.4}                // Updated for hierarchy
         linkCurvature={0.18}
-        linkOpacity={0.68}
+        linkOpacity={0.15}             // Updated for hierarchy
         d3AlphaDecay={0.018}
         d3VelocityDecay={0.4}
         warmupTicks={140}
         cooldownTicks={200}
         onEngineStop={onEngineStop}
         onNodeClick={handleNodeClick}
-        onNodeHover={(node) => {
-          // Changes the cursor to a pointer hand only when touching a lobe
-          document.body.style.cursor = node ? 'pointer' : 'auto';
-        }}
         width={window.innerWidth}
         height={window.innerHeight}
         linkDirectionalParticles={(link) => {
           const src = typeof link.source === 'object' ? link.source?.id : link.source;
           return src === 'mind' ? 5 : 3;
         }}
-        linkDirectionalParticleSpeed={(link) => {
-          const src = typeof link.source === 'object' ? link.source?.id : link.source;
-          return src === 'mind' ? 0.005 : 0.003;
-        }}
-        linkDirectionalParticleWidth={0.8} // Reduce width for a finer, data-like flow
+        linkDirectionalParticleSpeed={0.004}
+        linkDirectionalParticleWidth={1.2}
         linkDirectionalParticleThreeObject={(link) => {
-          // Use a very small sphere with high emissive intensity
+          const sg = typeof link.source === 'object' ? link.source?.group : 0;
+          const col = sg === 1 ? '#C06050' : sg === 2 ? '#3A9ABB' : '#E8C07A';
           const geo = new THREE.SphereGeometry(0.5, 8, 8); 
           const mat = new THREE.MeshPhongMaterial({
-            color: new THREE.Color('#E8B86D'),
-            emissive: new THREE.Color('#E8B86D'),
-            emissiveIntensity: 3.0, // Makes them "glow" without being bulky
+            color: new THREE.Color(col),
+            emissive: new THREE.Color(col),
+            emissiveIntensity: 3.0,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.8,
           });
           return new THREE.Mesh(geo, mat);
-    }}
+        }}
       />
 
-      <div className="title-overlay">
-        <span className="title-main">My Mind</span>
-        <span className="title-sub">a cartography of thought</span>
-      </div>
+      {/* The HUD Layer */}
+      <div className="interface-hud">
+        <div className="hud-top">
+          <div className="status-indicator">
+            <span className="pulse-dot"></span>
+            SYSTEM STATUS: OPTIMIZED
+          </div>
+        </div>
+        
+        <div className="title-overlay">
+          <span className="title-main">My Mind</span>
+          <span className="title-sub">a cartography of thought</span>
+        </div>
 
-      <div className="scroll-hint">↓ scroll to descend</div>
+        <div className="hud-bottom">
+          <div className="nav-hints">
+            CLICK LOBES TO DECODE • SCROLL TO DESCEND
+          </div>
+        </div>
+      </div>
 
       <div className="vignette" />
 
       <NodePanel node={selectedNode} />
+
+      {selectedNode && <NodePanel node={selectedNode} />}
 
       {selectedNode && (
         <button className="back-btn" onClick={handleBack}>

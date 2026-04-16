@@ -120,25 +120,26 @@ html, body {
 
 /* ─── Node info side panel ──────────────────────────────────────────────────── */
 .node-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: min(440px, 92vw);
-  height: 100vh;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1.6rem;
-  padding: 3.2rem 2.8rem 3.2rem 2.4rem;
-  background: rgba(5, 4, 8, 0.94);
-  border-left: 1px solid rgba(232, 184, 109, 0.1);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transform: translateX(105%);
-  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow-y: auto;
-  cursor: auto;
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  width: 320px;
+  padding: 1.5rem;
+  z-index: 9999;
+  pointer-events: auto;
+  
+  /* --- Glassmorphism Core --- */
+  background: rgba(15, 15, 35, 0.7); /* Semi-transparent dark background */
+  backdrop-filter: blur(10px);         /* The magic blur effect */
+  -webkit-backdrop-filter: blur(10px); /* Safari support */
+  
+  /* --- Polishing Touches --- */
+  border: 1px solid rgba(232, 184, 109, 0.2); /* Faint amber border */
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
 }
 
 .node-panel--visible {
@@ -225,4 +226,40 @@ html, body {
   color: #E8B86D;
   border-color: rgba(232, 184, 109, 0.45);
   box-shadow: 0 0 18px rgba(232, 184, 109, 0.12);
+}
+
+.interface-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* Allows interaction with the 3D brain */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+  z-index: 10;
+  font-family: 'Inter', sans-serif; /* Use a clean, modern font */
+  color: rgba(232, 184, 109, 0.8);
+  letter-spacing: 2px;
+  font-size: 0.7rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #E8B86D;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #E8B86D;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
