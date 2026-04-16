@@ -51,7 +51,7 @@ function buildBrainMaterial() {
 function buildCellMesh(node) {
   // The mind/brain node is replaced by a GLTF mesh added directly to the scene.
   // Return an invisible anchor group so the force simulation still has the node.
-  if (node.id === 'mind') {
+  if (node.id === 'mind' || node.id === 'Core' || node.id === 'My Mind') {
     const anchor = new THREE.Group();
     anchor.userData.isMindAnchor = true;
     return anchor;
@@ -193,9 +193,11 @@ export default function App() {
       const brain = brainMeshRef.current;
       const mind = mindNodeRef.current;
 
-      if (brain && mind) {
-        // Track mind node's simulated world position
-        brain.position.set(mind.x ?? 0, mind.y ?? 0, mind.z ?? 0);
+      if (brain) {
+        // Track mind node's simulated world position — only when resolved
+        if (mind) {
+          brain.position.set(mind.x ?? 0, mind.y ?? 0, mind.z ?? 0);
+        }
 
         // Mouse-reactive tilt — freeze while zoomed into a node
         if (!nodeFocused.current) {
@@ -208,10 +210,10 @@ export default function App() {
         }
 
         // Emissive breathing glow (not scale — brain should not throb in size)
-        const t = performance.now() / 1000;
+        const tBrain = performance.now() / 1000;
         brain.traverse((child) => {
           if (child.isMesh && child.material) {
-            child.material.emissiveIntensity = 0.45 + 0.22 * Math.sin(t * 0.8);
+            child.material.emissiveIntensity = 0.45 + 0.22 * Math.sin(tBrain * 0.8);
           }
         });
       }
@@ -269,7 +271,9 @@ export default function App() {
     graphRef.current.cameraPosition({ x: 0, y: 0, z: 430 }, { x: 0, y: 0, z: 0 }, 0);
 
     // Collect the live mind node — the force sim mutates graphData.nodes in-place with x/y/z
-    mindNodeRef.current = graphData.nodes.find(n => n.id === 'mind') ?? null;
+    mindNodeRef.current = graphData.nodes.find(
+      n => n.id === 'mind' || n.id === 'Core' || n.id === 'My Mind'
+    ) ?? null;
 
     // Collect all blob node groups for heartbeat pulse animation
     nodeGroupsRef.current = [];
@@ -310,6 +314,8 @@ export default function App() {
         let meshCount = 0;
         brain.traverse((child) => {
           if (child.isMesh) {
+            child.geometry.center();               // pull origin to 0,0,0
+            child.geometry.computeVertexNormals(); // fix lighting on older geometries
             child.material = buildBrainMaterial();
             meshCount++;
           }
