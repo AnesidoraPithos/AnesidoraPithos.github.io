@@ -24,19 +24,16 @@ html, body {
   height: 100vh;
   position: relative;
   background: #050408;
-  cursor: none;
+  cursor: auto;
 }
 
 /* ─── Atmospheric radial vignette ───────────────────────────────────────────── */
 .vignette {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 10;
-  background:
-    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, #050408 100%),
-    radial-gradient(ellipse 120% 50% at 50% 0%,   #050408 0%,  transparent 60%),
-    radial-gradient(ellipse 120% 50% at 50% 100%, #050408 0%,  transparent 60%);
+  z-index: 5;
+  background: radial-gradient(circle, transparent 30%, #000 100%);
 }
 
 /* ─── Title overlay ─────────────────────────────────────────────────────────── */

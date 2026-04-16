@@ -416,6 +416,10 @@ export default function App() {
         cooldownTicks={200}
         onEngineStop={onEngineStop}
         onNodeClick={handleNodeClick}
+        onNodeHover={(node) => {
+          // Changes the cursor to a pointer hand only when touching a lobe
+          document.body.style.cursor = node ? 'pointer' : 'auto';
+        }}
         width={window.innerWidth}
         height={window.innerHeight}
         linkDirectionalParticles={(link) => {
