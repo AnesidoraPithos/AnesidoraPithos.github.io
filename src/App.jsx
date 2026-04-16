@@ -286,7 +286,7 @@ export default function App() {
       });
 
       // Manual scale override (ignores the 'e' error in your logs)
-      brain.scale.setScalar(45); // Adjust this number if it's too big/small
+      brain.scale.setScalar(140); // Adjust this number if it's too big/small
       
       brainMeshRef.current = brain;
       scene.add(brain);
