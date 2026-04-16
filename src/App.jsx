@@ -296,34 +296,47 @@ export default function App() {
         const brain = gltf.scene;
         brain.name = 'brain-root';
 
-        // Force world-matrix update before bounding box computation
+        // Step A: center geometry first so bbox is accurate
+        brain.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.center();
+            child.geometry.computeVertexNormals();
+          }
+        });
+
+        // Step B: refresh matrices after geometry mutation
         brain.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(brain);
+
+        // Step C: expand bbox per mesh (handles empty root nodes)
+        const box = new THREE.Box3();
+        brain.traverse((child) => {
+          if (child.isMesh) box.expandByObject(child);
+        });
         const size = box.getSize(new THREE.Vector3());
         console.log('[Brain] Bounding box size:', size);
 
+        // Step D: scale — fallback 15 if model has no geometry
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
           brain.scale.setScalar(28 / maxDim);
         } else {
-          console.warn('[Brain] Bounding box is empty — model may have no geometry');
-          brain.scale.setScalar(1);
+          console.warn('[Brain] Bounding box empty — using fallback scale 15');
+          brain.scale.setScalar(15);
         }
 
-        // Apply bioluminescent flesh material to every mesh in the model
+        // Step E: apply material
         let meshCount = 0;
         brain.traverse((child) => {
           if (child.isMesh) {
-            child.geometry.center();               // pull origin to 0,0,0
-            child.geometry.computeVertexNormals(); // fix lighting on older geometries
             child.material = buildBrainMaterial();
             meshCount++;
           }
         });
         console.log('[Brain] Applied material to', meshCount, 'meshes');
 
+        // Step F: add to scene + debug handle
         brainMeshRef.current = brain;
-        // Always use the current scene from the graph ref (avoids stale closure)
+        window.brain = brain; // debug: type window.brain.position in console
         const currentScene = graphRef.current?.scene() ?? scene;
         currentScene.add(brain);
         console.log('[Brain] Added to scene at position', brain.position);
