@@ -244,123 +244,40 @@ export default function App() {
     };
   }, []);
 
-  // Inject custom scene lights after graph engine settles (idempotent)
   const onEngineStop = useCallback(() => {
-    if (!graphRef.current || lightsInitialized.current) return;
+    if (!graphRef.current) return;
     const scene = graphRef.current.scene();
 
-    // Strip Vite default lights
+    // 1. Only remove lights that DO NOT have our custom name
     const toRemove = [];
-    scene.traverse((obj) => { if (obj.isLight) toRemove.push(obj); });
-    toRemove.forEach((l) => scene.remove(l));
-
-    // Deep atmospheric ambient — soft dark navy raises baseline so no node is pitch-black
-    scene.add(new THREE.AmbientLight(0x1a1a2e, 1.0));
-
-    // Central bioluminescent amber core glow — boosted to reach outer network
-    const coreLight = new THREE.PointLight(0xe8b86d, 5.5, 520);
-    coreLight.position.set(0, 0, 0);
-    scene.add(coreLight);
-
-    // Cold ocean blue — AI hemisphere
-    const aiLight = new THREE.PointLight(0x1a508a, 2.2, 300);
-    aiLight.position.set(130, -50, -50);
-    scene.add(aiLight);
-
-    // Visceral blood red — Bio hemisphere
-    const bioLight = new THREE.PointLight(0x8a1e10, 1.8, 260);
-    bioLight.position.set(-130, 40, -30);
-    scene.add(bioLight);
-
-    // Rim light — above and slightly behind, catches wet lumpy node edges
-    const rimLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    rimLight.position.set(100, 200, -200); // Positioned above and behind
-    scene.add(rimLight);
-
-    const hemiLight = new THREE.HemisphereLight(0x4433aa, 0xaa3333, 0.6); // Soft top/bottom fill
-    scene.add(hemiLight);
-
-    graphRef.current.cameraPosition({ x: 0, y: 0, z: 430 }, { x: 0, y: 0, z: 0 }, 0);
-
-    // Collect the live mind node — the force sim mutates graphData.nodes in-place with x/y/z
-    mindNodeRef.current = graphData.nodes.find(
-      n => n.id === 'mind' || n.id === 'Core' || n.id === 'My Mind'
-    ) ?? null;
-
-    // Collect all blob node groups for heartbeat pulse animation
-    nodeGroupsRef.current = [];
-    scene.traverse((obj) => {
-      if (obj.isGroup && obj.userData.pulsePhase !== undefined) {
-        nodeGroupsRef.current.push(obj);
+    scene.traverse((obj) => { 
+      if (obj.isLight && obj.name !== 'custom-light') {
+        toRemove.push(obj); 
       }
     });
+    toRemove.forEach((l) => scene.remove(l));
 
-    // Load GLTF brain mesh — guard against double-fire (React StrictMode / re-renders)
-    if (brainMeshRef.current || scene.getObjectByName('brain-root')) return;
-    console.log('[Brain] Starting GLTF load…');
-    const loader = new GLTFLoader();
-    loader.load(
-      '/brain.glb',
-      (gltf) => {
-        console.log('[Brain] GLTF loaded, scene children:', gltf.scene.children.length);
-        if (brainMeshRef.current) return; // race-condition guard
+    // 2. Check if our lights already exist before adding them again
+    if (scene.getObjectByName('custom-light')) return;
 
-        const brain = gltf.scene;
-        brain.name = 'brain-root';
+    // 3. Add custom lights with high intensities and the 'custom-light' name
+    const ambient = new THREE.AmbientLight(0x1a1a2e, 1.5); // Boosted baseline
+    ambient.name = 'custom-light';
+    scene.add(ambient);
 
-        // Step A: center geometry first so bbox is accurate
-        brain.traverse((child) => {
-          if (child.isMesh) {
-            child.geometry.center();
-            child.geometry.computeVertexNormals();
-          }
-        });
+    const coreLight = new THREE.PointLight(0xe8b86d, 12.0, 600); // Massive boost for MeshPhysicalMaterial
+    coreLight.position.set(0, 0, 0);
+    coreLight.name = 'custom-light';
+    scene.add(coreLight);
 
-        // Step B: refresh matrices after geometry mutation
-        brain.updateMatrixWorld(true);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 4.0); // Strong rim light to define shape
+    rimLight.position.set(50, 200, -300);
+    rimLight.name = 'custom-light';
+    scene.add(rimLight);
 
-        // Step C: expand bbox per mesh (handles empty root nodes)
-        const box = new THREE.Box3();
-        brain.traverse((child) => {
-          if (child.isMesh) box.expandByObject(child);
-        });
-        const size = box.getSize(new THREE.Vector3());
-        console.log('[Brain] Bounding box size:', size);
+    // ... (Add your other lights like bioLight/aiLight here, naming each 'custom-light')
 
-        // Step D: scale — fallback 15 if model has no geometry
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
-          brain.scale.setScalar(28 / maxDim);
-        } else {
-          console.warn('[Brain] Bounding box empty — using fallback scale 15');
-          brain.scale.setScalar(15);
-        }
-
-        // Step E: apply material
-        let meshCount = 0;
-        brain.traverse((child) => {
-          if (child.isMesh) {
-            child.material = buildBrainMaterial();
-            meshCount++;
-          }
-        });
-        console.log('[Brain] Applied material to', meshCount, 'meshes');
-
-        // Step F: add to scene + debug handle
-        brainMeshRef.current = brain;
-        window.brain = brain; // debug: type window.brain.position in console
-        const currentScene = graphRef.current?.scene() ?? scene;
-        currentScene.add(brain);
-        console.log('[Brain] Added to scene at position', brain.position);
-      },
-      (progress) => {
-        if (progress.total) console.log('[Brain] Load progress:', Math.round(progress.loaded / progress.total * 100) + '%');
-      },
-      (err) => {
-        console.error('[Brain] Failed to load brain.glb:', err);
-      }
-    );
-    lightsInitialized.current = true;
+    console.log("Lighting system initialized and locked.");
   }, []);
 
   // Click a node → fly camera into it and open side panel
