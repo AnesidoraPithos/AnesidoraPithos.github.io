@@ -258,14 +258,35 @@ export default function App() {
     if (scene.getObjectByName('custom-light')) return;
 
     // 2. Add High-Intensity Lights for MeshPhysicalMaterial
-    const ambient = new THREE.AmbientLight(0x1a1a2e, 2.0);
+    // A. The Main 'Key' Light (Positioned to hit the front-left from the camera's view)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
+    keyLight.position.set(-150, 150, 400); // Positive Z brings it 'in front' of the brain
+    keyLight.name = 'custom-light';
+    scene.add(keyLight);
+
+    // B. The 'Fill' Light (Soft blue to lift the shadows on the right side)
+    const fillLight = new THREE.PointLight(0x2244aa, 3.0, 500);
+    fillLight.position.set(200, -100, 100);
+    fillLight.name = 'custom-light';
+    scene.add(fillLight);
+
+    // C. Boost the Ambient Baseline
+    // Increase this if the shadows are still pitch black
+    const ambient = new THREE.AmbientLight(0x1a1a2e, 2.5); 
     ambient.name = 'custom-light';
     scene.add(ambient);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 5.0);
-    rim.position.set(50, 200, -300);
-    rim.name = 'custom-light';
-    scene.add(rim);
+    // D. The 'Back' Light (Illuminates the rear of the brain)
+    // This is the missing piece. It sits behind the model.
+    const backLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    backLight.position.set(0, 100, -500); // Negative Z pushes it behind
+    backLight.name = 'custom-light';
+    scene.add(backLight);
+
+    const coreLight = new THREE.PointLight(0xe8b86d, 20, 500); // High intensity
+    coreLight.position.set(0, 0, 0); // Sits exactly in the center of the brain
+    coreLight.name = 'custom-light';
+    scene.add(coreLight);
 
     // 3. Load Model with Fixed Scaling and Centering
     if (brainMeshRef.current || scene.getObjectByName('brain-root')) return;
@@ -286,7 +307,7 @@ export default function App() {
       });
 
       // Manual scale override (ignores the 'e' error in your logs)
-      brain.scale.setScalar(140); // Adjust this number if it's too big/small
+      brain.scale.setScalar(120); // Adjust this number if it's too big/small
       
       brainMeshRef.current = brain;
       scene.add(brain);
