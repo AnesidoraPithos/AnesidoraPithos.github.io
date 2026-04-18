@@ -8,7 +8,7 @@ import LobePanel from './LobePanel';
 import WorkingMemoryTray from './WorkingMemoryTray';
 import Journal from './Journal';
 import Homunculus from './Homunculus';
-import { initAudio, setRegion, setMuted, resumeAudio } from './audioEngine';
+import { initAudio, setRegion, setMuted, resumeAudio, playNote, resetNote } from './audioEngine';
 import './App.css';
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -415,10 +415,13 @@ export default function App() {
       dragNodeRef.current = node;
       setIsDraggingToTray(true);
     }
+    initAudio(); resumeAudio();
+    playNote(node.x ?? 0, node.y ?? 0, node.z ?? 0);
   }, []);
 
   const handleNodeDragEnd = useCallback((node) => {
     if (!dragNodeRef.current) return;
+    resetNote();
     const tray = document.querySelector('.wm-tray');
     if (tray) {
       const rect = tray.getBoundingClientRect();
