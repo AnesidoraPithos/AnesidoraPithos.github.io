@@ -245,6 +245,9 @@ export default function App() {
   const pulsesRef   = useRef([]);
   const lastFireRef = useRef(0);
 
+  // Star field canvas
+  const starCanvasRef = useRef(null);
+
   // EEG
   const eegPathRef        = useRef(null);
   const waveParamsRef     = useRef({ freq: 3.2, amp: 14, speed: 1.2, jag: 0 });
@@ -261,6 +264,8 @@ export default function App() {
   const [selectedLobe,    setSelectedLobe]    = useState(null);
   const [mood,            setMood]            = useState('curious');
   const [trayItems,       setTrayItems]       = useState([]);
+  const [isDraggingToTray, setIsDraggingToTray] = useState(false);
+  const dragNodeRef = useRef(null);
   const [showJournal,     setShowJournal]     = useState(false);
   const [showHomunculus,  setShowHomunculus]  = useState(false);
   const [isMuted,         setIsMuted]         = useState(false);
@@ -279,6 +284,108 @@ export default function App() {
   useEffect(() => {
     const vars = MOOD_CSS.curious;
     Object.entries(vars).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+  }, []);
+
+  // ── Star field (Hipparcos catalog) ─────────────────────────────────────────
+  useEffect(() => {
+    const canvas = starCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let raf;
+    let stars = [];
+    let rawData = null;
+
+    function bvToColor(bv) {
+      if (bv === null || bv === undefined || isNaN(bv)) return [240, 245, 255];
+      if (bv < 0.0)  return [180, 200, 255];
+      if (bv < 0.3)  return [240, 245, 255];
+      if (bv < 0.8)  return [255, 240, 200];
+      return [255, 210, 150];
+    }
+
+    function buildStars(data, w, h) {
+      return data.map(s => {
+        const sx = (s.ra / 360) * w;
+        const sy = ((s.dec + 90) / 180) * h;
+        const radius = Math.max(0.4, 2.8 - s.mag * 0.35);
+        const baseOpacity = s.mag < 2 ? 0.9 : s.mag < 4 ? 0.65 : s.mag < 5.5 ? 0.42 : 0.22;
+        const phase = Math.random() * Math.PI * 2;
+        const phase2 = Math.random() * Math.PI * 2;
+        // two-frequency twinkle: slow swell + fast scintillation
+        const speed  = 0.15 + Math.random() * 0.4;
+        const speed2 = 2.0  + Math.random() * 4.0;
+        const [r, g, b] = bvToColor(s.bv);
+        // depth: 0 = near/foreground, 1 = far/background
+        // bright stars (low mag) tend nearer, faint stars farther — with noise
+        const depth = Math.min(1, Math.max(0, (s.mag - 0.5) / 6.0 + (Math.random() - 0.5) * 0.3));
+        // parallax drift amplitude: near stars wander up to 14px, far ones only ~2px
+        const driftAmp = (1 - depth) * 12 + 2;
+        const driftSpeedX = 0.04 + Math.random() * 0.06 * (1 - depth * 0.6);
+        const driftSpeedY = 0.03 + Math.random() * 0.05 * (1 - depth * 0.6);
+        const driftPhaseX = Math.random() * Math.PI * 2;
+        const driftPhaseY = Math.random() * Math.PI * 2;
+        return { sx, sy, radius, baseOpacity, phase, phase2, speed, speed2, r, g, b,
+                 depth, driftAmp, driftSpeedX, driftSpeedY, driftPhaseX, driftPhaseY };
+      });
+    }
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      if (rawData) stars = buildStars(rawData, canvas.width, canvas.height);
+    }
+
+    function draw(ts) {
+      const t = ts / 1000;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const s of stars) {
+        // slow swell (0.15–0.55 Hz) blended with fast scintillation (2–6 Hz)
+        const slow = Math.sin(t * s.speed  + s.phase);
+        const fast = Math.sin(t * s.speed2 + s.phase2);
+        const twinkle = 0.25 + 0.45 * slow + 0.30 * fast;
+        const opacity = Math.max(0, s.baseOpacity * twinkle);
+        // parallax drift — near stars move more, far stars barely drift
+        const x = s.sx + s.driftAmp * Math.sin(t * s.driftSpeedX + s.driftPhaseX);
+        const y = s.sy + s.driftAmp * Math.cos(t * s.driftSpeedY + s.driftPhaseY);
+
+        // soft glow bloom for bright/near stars only
+        if (s.radius > 1.0) {
+          const glowR = s.radius * 5;
+          const grd = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+          grd.addColorStop(0,   `rgba(${s.r},${s.g},${s.b},${(opacity * 0.3).toFixed(3)})`);
+          grd.addColorStop(1,   `rgba(${s.r},${s.g},${s.b},0)`);
+          ctx.beginPath();
+          ctx.arc(x, y, glowR, 0, Math.PI * 2);
+          ctx.fillStyle = grd;
+          ctx.fill();
+        }
+
+        // star core — bright stars pulse in size too
+        const r = s.radius > 1.0 ? s.radius * (0.85 + 0.15 * fast) : s.radius;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.3, r), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${s.r},${s.g},${s.b},${opacity.toFixed(3)})`;
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    }
+
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    fetch('/stars.json')
+      .then(r => r.json())
+      .then(data => {
+        rawData = data;
+        stars = buildStars(data, canvas.width, canvas.height);
+        raf = requestAnimationFrame(draw);
+      });
+
+    window.addEventListener('resize', resize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+    };
   }, []);
 
   // ── Working memory tray ────────────────────────────────────────────────────
@@ -301,6 +408,29 @@ export default function App() {
   const handleRemoveFromTray = useCallback((idx) => {
     setTrayItems(prev => prev.filter((_, i) => i !== idx));
   }, []);
+
+  const handleNodeDrag = useCallback((node) => {
+    if (node.id === 'mind') return;
+    if (dragNodeRef.current?.id !== node.id) {
+      dragNodeRef.current = node;
+      setIsDraggingToTray(true);
+    }
+  }, []);
+
+  const handleNodeDragEnd = useCallback((node) => {
+    if (!dragNodeRef.current) return;
+    const tray = document.querySelector('.wm-tray');
+    if (tray) {
+      const rect = tray.getBoundingClientRect();
+      const cx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cursor-x'));
+      const cy = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cursor-y'));
+      if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+        handleAddToTray(node);
+      }
+    }
+    dragNodeRef.current = null;
+    setIsDraggingToTray(false);
+  }, [handleAddToTray]);
 
   const handleBack = useCallback(() => {
     if (!graphRef.current) return;
@@ -717,6 +847,10 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="container" data-mood={mood}>
+      <canvas
+        ref={starCanvasRef}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
+      />
       <div className="vignette" />
 
       {/* Left panel slot — lobe panel */}
@@ -731,7 +865,7 @@ export default function App() {
         <ForceGraph3D
           ref={graphRef}
           graphData={graphData}
-          backgroundColor="#05050f"
+          backgroundColor="rgba(0,0,0,0)"
           showNavInfo={false}
           width={canvasDims.width}
           height={canvasDims.height}
@@ -772,6 +906,8 @@ export default function App() {
           }}
           onNodeClick={handleNodeClick}
           onNodeHover={(node) => setHoveredNode(node?.id === 'mind' ? null : node)}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragEnd={handleNodeDragEnd}
           onEngineStop={onEngineStop}
         />
       </div>
@@ -791,7 +927,7 @@ export default function App() {
       {/* HUD */}
       <div className="interface-hud">
         <div className="title-overlay">
-          <span className="title-main">Anesidora Pithos</span>
+          <span className="title-main">Faith Tan</span>
           <span className="title-sub">a cartography of thought</span>
         </div>
       </div>
@@ -802,6 +938,7 @@ export default function App() {
         onRemove={handleRemoveFromTray}
         onSelect={handleNodeClick}
         overloaded={trayItems.length >= 7}
+        isDragTarget={isDraggingToTray}
       />
 
       {!selectedNode && <div className="scroll-hint">scroll to descend</div>}
@@ -871,6 +1008,25 @@ export default function App() {
         title={isMuted ? 'unmute' : 'mute audio'}
       >{isMuted ? '♪' : '♫'}</button>
 
+      {isDraggingToTray && dragNodeRef.current && (
+        <div
+          className="drag-ghost"
+          style={{
+            left: 'var(--cursor-x, -200px)',
+            top:  'var(--cursor-y, -200px)',
+          }}
+        >
+          <span
+            className="drag-ghost__dot"
+            style={{ background: ['#E8B86D','#B04040','#2E7BA8','#5C8C6A'][dragNodeRef.current.group ?? 0] }}
+          />
+          <span className="drag-ghost__label">
+            {dragNodeRef.current.name.length > 14
+              ? dragNodeRef.current.name.slice(0, 14) + '…'
+              : dragNodeRef.current.name}
+          </span>
+        </div>
+      )}
       <div className="cursor-dot" />
       <svg className="eeg-bar" viewBox="0 0 1920 60" preserveAspectRatio="none" aria-hidden="true">
         <path ref={eegPathRef} className="eeg-bar__wave" />

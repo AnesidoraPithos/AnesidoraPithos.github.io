@@ -47,7 +47,7 @@ export function initAudio() {
     const gain = _ctx.createGain();
     osc.type = i === 0 ? 'sine' : 'triangle';
     osc.frequency.value = freq;
-    gain.gain.value = 0.04 / (i + 1);
+    gain.gain.value = 0.4 / (i + 1);
     lfoGain.connect(gain.gain);
     osc.connect(gain);
     gain.connect(_masterGain);

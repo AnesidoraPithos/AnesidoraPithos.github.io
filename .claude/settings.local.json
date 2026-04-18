@@ -11,7 +11,15 @@
       "Bash(ls \"C:/Users/tanfa/.claude/\"*.local.json)",
       "Bash(xargs -I {} ls -la {})",
       "Bash(node -e ':*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:codeberg.org)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/gmiller123456/hip2000/master/hipparcos_6.5_concise.js\")",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }

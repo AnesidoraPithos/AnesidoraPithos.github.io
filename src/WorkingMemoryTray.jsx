@@ -2,9 +2,9 @@
 const SLOT_COUNT = 7;
 const DOT_COLORS = ['#E8B86D', '#B04040', '#2E7BA8', '#5C8C6A'];
 
-export default function WorkingMemoryTray({ items, onRemove, onSelect, overloaded }) {
+export default function WorkingMemoryTray({ items, onRemove, onSelect, overloaded, isDragTarget }) {
   return (
-    <div className={`wm-tray${overloaded ? ' wm-tray--overloaded' : ''}`}>
+    <div className={['wm-tray', overloaded ? 'wm-tray--overloaded' : '', isDragTarget ? 'wm-tray--drag-target' : ''].filter(Boolean).join(' ')}>
       <span className="wm-tray__header">
         <span className="wm-tray__title">working memory</span>
         <span className="wm-tray__count">{items.length}<span className="wm-tray__denom">/{SLOT_COUNT}</span></span>
